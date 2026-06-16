@@ -1,3 +1,39 @@
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getDatabase,
+ref,
+set,
+onValue
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyBn3LXmBVnX3r820EcjtiIhh50WaPzvy9I",
+
+authDomain: "fikram-40e2f.firebaseapp.com",
+
+databaseURL:
+"https://fikram-40e2f-default-rtdb.asia-southeast1.firebasedatabase.app/",
+
+projectId: "fikram-40e2f",
+
+storageBucket:
+"fikram-40e2f.firebasestorage.app",
+
+messagingSenderId: "28997536264",
+
+appId:
+"1:28997536264:web:37838cac2df3eb32475fbd"
+
+};
+
+const app = initializeApp(firebaseConfig);
+
+const db = getDatabase(app);
+
 const staffList = [
 
 "KENDRICK TANRIO - X1318081",
@@ -35,140 +71,203 @@ const staffList = [
 
 ];
 
-const container = document.getElementById("staffContainer");
+const container =
+document.getElementById("staffContainer");
 
-staffList.forEach(nama => {
+staffList.forEach((nama,index)=>{
 
-  container.innerHTML += `
+container.innerHTML += `
 
-  <div class="card">
+<div class="card">
 
-    <div class="nama">
-      ${nama}
-    </div>
+<div class="nama">
+${nama}
+</div>
 
-    <div class="status">
-      Status : Standby
-    </div>
+<div class="status" id="status-${index}">
+Status : Standby
+</div>
 
-    <div class="timer-box">
-      <div class="timer">
-        16:00
-      </div>
-    </div>
+<div class="timer-box">
 
-    <button class="izin-btn" onclick="mulaiTimer(this)">
-      IZIN
-    </button>
+<div class="timer" id="timer-${index}">
+16:00
+</div>
 
-    <button class="masuk-btn" onclick="stopTimer(this)">
-      MASUK
-    </button>
+</div>
 
-  </div>
+<button
+class="izin-btn"
+onclick="mulaiTimer(${index})"
+>
+IZIN
+</button>
 
-  `;
+<button
+class="masuk-btn"
+onclick="stopTimer(${index})"
+>
+MASUK
+</button>
+
+</div>
+
+`;
 
 });
 
-let timers = new Map();
+const activeIntervals = {};
 
-function mulaiTimer(button){
+window.mulaiTimer = function(index){
 
-  const card = button.parentElement;
+const startTime = Date.now();
 
-  const timerDisplay = card.querySelector(".timer");
+set(ref(db,"staff/"+index),{
 
-  const status = card.querySelector(".status");
+status:"izin",
 
-  if(timers.has(card)){
-    return;
-  }
+startTime:startTime
 
-  let waktu = 16 * 60;
-
-  status.innerHTML = "Status : Sedang Izin";
-
-  const interval = setInterval(function(){
-
-    let menit = Math.floor(waktu / 60);
-
-    let detik = waktu % 60;
-
-    if(detik < 10){
-      detik = "0" + detik;
-    }
-
-    timerDisplay.innerHTML = menit + ":" + detik;
-
-    waktu--;
-
-    if(waktu < 0){
-
-      clearInterval(interval);
-
-      timerDisplay.innerHTML = "SELESAI";
-
-      status.innerHTML = "Status : Kembali";
-
-      timers.delete(card);
-
-    }
-
-  },1000);
-
-  timers.set(card, interval);
+});
 
 }
 
-function stopTimer(button){
+window.stopTimer = function(index){
 
-  const card = button.parentElement;
+if(activeIntervals[index]){
 
-  const timerDisplay = card.querySelector(".timer");
-
-  const status = card.querySelector(".status");
-
-  if(timers.has(card)){
-
-    clearInterval(timers.get(card));
-
-    timers.delete(card);
-
-  }
-
-  timerDisplay.innerHTML = "16:00";
-
-  status.innerHTML = "Status : Standby";
+clearInterval(activeIntervals[index]);
 
 }
 
-function filterNama(){
+set(ref(db,"staff/"+index),{
 
-  const input = document
-  .getElementById("searchInput")
-  .value
-  .toLowerCase();
+status:"standby",
 
-  const cards = document.querySelectorAll(".card");
+startTime:0
 
-  cards.forEach(card => {
+});
 
-    const nama = card
-    .querySelector(".nama")
-    .innerText
-    .toLowerCase();
+}
 
-    if(nama.includes(input)){
+for(let i=0;i<staffList.length;i++){
 
-      card.style.display = "block";
+const staffRef = ref(db,"staff/"+i);
 
-    }else{
+onValue(staffRef,(snapshot)=>{
 
-      card.style.display = "none";
+const data = snapshot.val();
 
-    }
+const timer =
+document.getElementById("timer-"+i);
 
-  });
+const status =
+document.getElementById("status-"+i);
+
+if(data){
+
+if(data.status=="izin"){
+
+status.innerHTML =
+"Status : Sedang Izin";
+
+updateTimer(i,data.startTime);
+
+}else{
+
+status.innerHTML =
+"Status : Standby";
+
+timer.innerHTML = "16:00";
+
+if(activeIntervals[i]){
+
+clearInterval(activeIntervals[i]);
+
+}
+
+}
+
+}
+
+});
+
+}
+
+function updateTimer(index,startTime){
+
+const timer =
+document.getElementById("timer-"+index);
+
+if(activeIntervals[index]){
+
+clearInterval(activeIntervals[index]);
+
+}
+
+activeIntervals[index] = setInterval(()=>{
+
+const sekarang = Date.now();
+
+const selisih =
+16*60 - Math.floor((sekarang-startTime)/1000);
+
+if(selisih<=0){
+
+timer.innerHTML="SELESAI";
+
+clearInterval(activeIntervals[index]);
+
+return;
+
+}
+
+const menit =
+Math.floor(selisih/60);
+
+let detik =
+selisih%60;
+
+if(detik<10){
+
+detik="0"+detik;
+
+}
+
+timer.innerHTML =
+menit+":"+detik;
+
+},1000);
+
+}
+
+window.filterNama = function(){
+
+const input =
+document.getElementById("searchInput")
+.value
+.toLowerCase();
+
+const cards =
+document.querySelectorAll(".card");
+
+cards.forEach(card=>{
+
+const nama =
+card.querySelector(".nama")
+.innerText
+.toLowerCase();
+
+if(nama.includes(input)){
+
+card.style.display="block";
+
+}else{
+
+card.style.display="none";
+
+}
+
+});
 
 }
