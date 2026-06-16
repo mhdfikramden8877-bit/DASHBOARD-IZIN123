@@ -1,4 +1,3 @@
-```javascript
 const staffList = [
 
 "KENDRICK TANRIO - X1318081",
@@ -173,4 +172,3 @@ function filterNama(){
   });
 
 }
-```
