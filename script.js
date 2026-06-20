@@ -1,3 +1,44 @@
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getDatabase,
+ref,
+set,
+onValue
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+
+  apiKey: "AIzaSyBn3LXmBVnX3r820EcjtiIhh50WaPzvy9I",
+
+  authDomain:
+  "fikram-40e2f.firebaseapp.com",
+
+  databaseURL:
+  "https://fikram-40e2f-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+  projectId:
+  "fikram-40e2f",
+
+  storageBucket:
+  "fikram-40e2f.appspot.com",
+
+  messagingSenderId:
+  "28997536264",
+
+  appId:
+  "1:28997536264:web:37838cac2df3eb32475fbd"
+
+};
+
+const app =
+initializeApp(firebaseConfig);
+
+const db =
+getDatabase(app);
+
 const staffList = [
 
 "KENDRICK TANRIO - X1318081",
@@ -38,8 +79,6 @@ const staffList = [
 const container =
 document.getElementById("staffContainer");
 
-const activeIntervals = {};
-
 staffList.forEach((nama,index)=>{
 
 container.innerHTML += `
@@ -50,14 +89,16 @@ container.innerHTML += `
 ${nama}
 </div>
 
-<div class="status"
+<div
+class="status"
 id="status-${index}">
 Status : Standby
 </div>
 
 <div class="timer-box">
 
-<div class="timer"
+<div
+class="timer"
 id="timer-${index}">
 16:00
 </div>
@@ -66,13 +107,13 @@ id="timer-${index}">
 
 <button
 class="izin-btn"
-onclick="mulaiTimer(${index})">
+onclick="mulaiIzin(${index})">
 IZIN
 </button>
 
 <button
 class="masuk-btn"
-onclick="stopTimer(${index})">
+onclick="masuk(${index})">
 MASUK
 </button>
 
@@ -82,83 +123,145 @@ MASUK
 
 });
 
-function mulaiTimer(index){
+window.mulaiIzin = function(index){
+
+const startTime =
+Date.now();
+
+set(
+ref(db,'izin/'+index),
+{
+
+status:'izin',
+
+startTime:startTime
+
+}
+
+);
+
+}
+
+window.masuk = function(index){
+
+set(
+ref(db,'izin/'+index),
+{
+
+status:'standby',
+
+startTime:null
+
+}
+
+);
+
+}
+
+staffList.forEach((nama,index)=>{
+
+onValue(
+ref(db,'izin/'+index),
+(snapshot)=>{
+
+const data =
+snapshot.val();
 
 const timer =
-document.getElementById(`timer-${index}`);
+document.getElementById(
+`timer-${index}`
+);
 
 const status =
-document.getElementById(`status-${index}`);
+document.getElementById(
+`status-${index}`
+);
+
+if(!data){
+
+timer.innerHTML =
+"16:00";
+
+status.innerHTML =
+"Status : Standby";
+
+return;
+
+}
+
+if(data.status === "izin"){
 
 status.innerHTML =
 "Status : Sedang Izin";
 
-let duration = 16 * 60;
+setInterval(()=>{
 
-clearInterval(activeIntervals[index]);
+const now =
+Date.now();
 
-activeIntervals[index] = setInterval(()=>{
+const diff =
+16*60 -
+Math.floor(
+(now - data.startTime)/1000
+);
+
+if(diff <= 0){
+
+timer.innerHTML =
+"TELAT";
+
+status.innerHTML =
+"Status : Telat";
+
+return;
+
+}
 
 let minutes =
-Math.floor(duration / 60);
+Math.floor(diff/60);
 
 let seconds =
-duration % 60;
+diff % 60;
 
 if(seconds < 10){
 
-seconds = "0" + seconds;
+seconds =
+"0"+seconds;
 
 }
 
 timer.innerHTML =
 minutes + ":" + seconds;
 
-duration--;
-
-if(duration < 0){
-
-clearInterval(
-activeIntervals[index]
-);
-
-timer.innerHTML =
-"SELESAI";
-
-status.innerHTML =
-"Status : Telat";
-
-}
-
 },1000);
 
-}
+}else{
 
-function stopTimer(index){
+timer.innerHTML =
+"16:00";
 
-clearInterval(
-activeIntervals[index]
-);
-
-document.getElementById(
-`timer-${index}`
-).innerHTML = "16:00";
-
-document.getElementById(
-`status-${index}`
-).innerHTML = "Status : Standby";
+status.innerHTML =
+"Status : Standby";
 
 }
 
-function filterNama(){
+});
+
+});
+
+window.filterNama = function(){
 
 const input =
-document.getElementById("searchInput")
+document.getElementById(
+"searchInput"
+)
 .value
 .toLowerCase();
 
 const cards =
-document.querySelectorAll(".card");
+document.querySelectorAll(
+".card"
+);
 
 cards.forEach(card=>{
 
@@ -169,11 +272,13 @@ card.querySelector(".nama")
 
 if(nama.includes(input)){
 
-card.style.display = "block";
+card.style.display =
+"block";
 
 }else{
 
-card.style.display = "none";
+card.style.display =
+"none";
 
 }
 
